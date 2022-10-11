@@ -1,0 +1,1 @@
+A POC to metadata server backed by graph database (ArangoDB currently). Ideally, the artifact service should be completely generated using [Protocol Buffer](https://developers.google.com/protocol-buffers).

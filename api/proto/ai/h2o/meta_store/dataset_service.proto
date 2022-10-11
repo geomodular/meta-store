@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package ai.h2o.meta_store;
+
+option go_package = "github.com/geomodular/meta-store/gen/proto/ai/h2o/meta_store";
+
+import "google/api/annotations.proto";
+import "ai/h2o/meta_store/dataset.proto";
+
+service DatasetService {
+  rpc CreateDataset(CreateDatasetRequest) returns (Dataset) {
+    option(google.api.http) = {
+      post: "/{parent=services/metaStore}/datasets"
+      body: "*"
+    };
+  }
+  rpc GetDataset(GetDatasetRequest) returns (Dataset) {
+    option(google.api.http) = {
+      get: "/{name=services/metaStore/datasets/*/versions/*}"
+    };
+  }
+  rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse) {
+    option(google.api.http) = {
+      get: "/{parent=services/metaStore}/datasets",
+    };
+  }
+}
+
+message CreateDatasetRequest {
+  // Required. Name of the parent Project in format `services/hydrogenTorch`.
+  string parent = 1;
+  // Required. MIME type of this resource, for example application/zip.
+  string mime = 3;
+  // Required. Dataset spec.
+  Dataset dataset = 4;
+}
+
+
+message GetDatasetRequest {
+  // Required. Name of the dataset to get.
+  string name = 1;
+}
+
+
+message ListDatasetsRequest {
+  // Optional. Specifies the maximum number of results to be returned by the server. The server may further constrain
+  // the maximum number of results returned in a single page.
+  int32 page_size = 1;
+  // Optional. The pagination token (returned in list response). If empty, first page is returned.
+  string page_token = 2;
+  // Required. The name of the parent resource. If applied, only resources belonging to this parent will be returned.
+  // Examples:
+  //   - `projects/<UUID>`: resources belonging to this Project are returned
+  string parent = 3;
+}
+
+
+message ListDatasetsResponse {
+  // The total count of resources in the list irrespective of pagination.
+  int32 total_size = 1;
+  // Optional. This field represents the pagination token to retrieve the next page of results. If the value is "", it
+  // means no further results for the request.
+  string next_page_token = 2;
+  // Found resources.
+  repeated Dataset datasets = 3;
+}

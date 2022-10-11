@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ai.h2o.meta_store;
+
+option go_package = "github.com/geomodular/meta-store/gen/proto/ai/h2o/meta_store";
+
+import "google/protobuf/descriptor.proto";
+
+enum CollectionType {
+  UNDEFINED = 0;
+  DOCUMENT = 1;
+  EDGE = 2;
+}
+
+extend google.protobuf.MessageOptions {
+  optional CollectionType collection_type = 50000;
+}

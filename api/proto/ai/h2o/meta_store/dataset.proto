@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package ai.h2o.meta_store;
+
+option go_package = "github.com/geomodular/meta-store/gen/proto/ai/h2o/meta_store";
+
+import "google/protobuf/timestamp.proto";
+import "ai/h2o/meta_store/dataset_options.proto";
+
+
+// Dataset.
+message Dataset {
+
+  option (collection_type) = DOCUMENT;
+
+  // Output only. Name of the Dataset resource in format `services/metaStore/datasets/<UUID>`.
+  string name = 1;
+  // Output only. The name of the parent Project in format `services/metaStore`. All versions of this resource must belong
+  // to the same parent.
+  string parent = 2;
+  // Required. Immutable. The file name of the dataset.
+  string filename = 3;
+  // Required. Immutable. Human readable name of the resource.
+  string display_name = 4;
+  // Optional. Immutable. Human readable description.
+  string description = 5;
+  // Output only. Timestamp when the resource has been created.
+  google.protobuf.Timestamp create_time = 6;
+  // Output only. Timestamp when this resource has been updated for the last time.
+  google.protobuf.Timestamp update_time = 7;
+}
