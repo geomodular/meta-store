@@ -5,24 +5,28 @@ import (
 	"google.golang.org/grpc"
 )
 
-// TODO: Make SETs instead of arrays.
+type grpcInitializer func(*grpc.Server, driver.Database)
 
-var grpcInitializers []func(*grpc.Server, driver.Database)
+var grpcInitializers []grpcInitializer
 
-func RegisterGRPCInitializer(i func(*grpc.Server, driver.Database)) {
-	grpcInitializers = append(grpcInitializers, i)
+func RegisterGRPCInitializer(f grpcInitializer) {
+	grpcInitializers = append(grpcInitializers, f)
 }
 
-func GetGRPCInitializers() []func(*grpc.Server, driver.Database) {
+func GetGRPCInitializers() []grpcInitializer {
 	return grpcInitializers
 }
 
-var collections []string
+var collections = map[string]struct{}{}
 
 func RegisterCollection(c string) {
-	collections = append(collections, c)
+	collections[c] = struct{}{}
 }
 
 func GetCollections() []string {
-	return collections
+	cs := make([]string, 0, len(collections))
+	for k := range collections {
+		cs = append(cs, k)
+	}
+	return cs
 }

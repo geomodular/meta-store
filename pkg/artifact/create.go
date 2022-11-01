@@ -8,12 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func Create[T any](ctx context.Context, db driver.Database, a Artifact) (*T, error) {
+func Create[T any](ctx context.Context, db driver.Database, collectionName string, a Artifact) (*T, error) {
 
 	key := uuid.New()
 
 	serviceName := resource.NewMetaStoreResource()
-	collectionName := a.GetCollection()
 	resourceName := serviceName.Join(resource.New(collectionName, key.String()))
 
 	a.SetKey(key.String())
@@ -31,7 +30,7 @@ func Create[T any](ctx context.Context, db driver.Database, a Artifact) (*T, err
 	ctx = driver.WithReturnNew(ctx, &newArtifact)
 	meta, err := col.CreateDocument(ctx, a)
 	if err != nil {
-		return nil, log.Report(err, "failed creating document")
+		return nil, log.Report(err, "failed creating artifact")
 	}
 
 	log.ArangoMeta(meta, "new artifact created")

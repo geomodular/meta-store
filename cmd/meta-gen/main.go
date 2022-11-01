@@ -45,7 +45,6 @@ func genAll(plugin *protogen.Plugin, file *protogen.File) *protogen.GeneratedFil
 	}
 
 	for _, message := range file.Messages {
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/geomodular/meta-store/pkg/server/asset"})
 		genMessage(g, message)
 	}
 
@@ -61,13 +60,18 @@ func genHeader(g *protogen.GeneratedFile, file *protogen.File) {
 
 func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 
+	// NOTE: To load extension ahead check: https://github.com/golang/protobuf/issues/1260
+	options := service.Desc.Options().(*descriptorpb.ServiceOptions)
+
 	serviceName := strings.TrimSuffix(service.GoName, "Service")
 	bigServiceName := capitalize(serviceName)
 	smallServiceName := lower(serviceName)
 	serviceStructName := fmt.Sprintf("%sServiceServer", smallServiceName)
+	collectionName := proto.GetExtension(options, option.E_CollectionName).(string)
 
 	g.P("func init() {")
 	g.P("asset.RegisterGRPCInitializer(initGRPC)")
+	g.P("asset.RegisterCollection(\"", collectionName, "\")")
 	g.P("}")
 
 	g.P()
@@ -96,26 +100,32 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 
 		// TODO: bigServiceName != Meta equivalent
 		// TODO: what to do with plural?
+		// TODO: use switch and f() function to determine method type
 
 		g.P("func (x *", serviceStructName, ") ", mName, "(ctx context.Context, req *", mInput, ") (*", mOutput, ", error) {")
 		if strings.HasPrefix(mName, "Create") {
 			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
-			g.P("outArtifact, err := artifact.Create[Meta", bigServiceName, "](ctx, x.db, inArtifact)")
+			g.P("outArtifact, err := artifact.Create[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact)")
 			g.P("if err != nil { return nil, errors.Wrap(err, \"failed creating ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
 		} else if strings.HasPrefix(mName, "Get") {
 			g.P("resourceName := req.GetName()")
-			g.P("outArtifact, err := artifact.Get[Meta", bigServiceName, "](ctx, x.db, resourceName)")
+			g.P("outArtifact, err := artifact.Get[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", resourceName)")
 			g.P("if err != nil { return nil, errors.Wrap(err, \"failed getting ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
 		} else if strings.HasPrefix(mName, "List") {
 			g.P("inToken := req.GetPageToken()")
 			g.P("inSize := int(req.GetPageSize())")
-			g.P("outToken, outSize, outArtifacts, err := artifact.List[Meta", bigServiceName, "](ctx, x.db, inToken, inSize)")
+			g.P("outToken, outSize, outArtifacts, err := artifact.List[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inToken, inSize)")
 			g.P("if err != nil { return nil, errors.Wrap(err, \"failed listing ", bigServiceName, "\") }")
 			g.P("var artifacts []*", bigServiceName)
-			g.P("for _, artifact := range outArtifacts { artifacts = append(artifacts, artifact.ToProto()) }")
+			g.P("for _, a := range outArtifacts { artifacts = append(artifacts, a.ToProto()) }")
 			g.P("return &", mOutput, "{ NextPageToken: outToken, TotalSize: int32(outSize), ", bigServiceName, "s: artifacts }, nil")
+		} else if strings.HasPrefix(mName, "Remove") {
+			g.P("resourceName := req.GetName()")
+			g.P("err := artifact.Delete(ctx, x.db, \"", collectionName, "\", resourceName)")
+			g.P("if err != nil { return nil, errors.Wrap(err, \"failed removing", bigServiceName, "\") }")
+			g.P("return &", mOutput, "{}, nil")
 		} else {
 			g.P("panic(\"not implemented\")")
 		}
@@ -137,14 +147,6 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 	} else {
 		return // Messages that don't have collection type are not processed.
 	}
-
-	collectionName := proto.GetExtension(options, option.E_CollectionName).(string)
-
-	g.P("func init() {")
-	g.P("asset.RegisterCollection(\"", collectionName, "\")")
-	g.P("}")
-
-	g.P()
 
 	g.P("type Meta", message.GoIdent, " struct {")
 	g.P()
@@ -175,10 +177,6 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 		}
 	}
 	g.P("}")
-	g.P("}")
-	g.P()
-	g.P("func (x *Meta", message.GoIdent, ") GetCollection() string {")
-	g.P("return \"", collectionName, "\"  // NOTE: is it safe to return a static value?")
 	g.P("}")
 	g.P()
 	g.P("func (x *Meta", message.GoIdent, ") SetKey(value string) {")

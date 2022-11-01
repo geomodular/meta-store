@@ -7,13 +7,11 @@ import (
 	"github.com/geomodular/meta-store/pkg/resource"
 )
 
-func Get[T any](ctx context.Context, db driver.Database, name string) (*T, error) {
-
-	collectionName := "datasets" // TODO
+func Get[T any](ctx context.Context, db driver.Database, collectionName, name string) (*T, error) {
 
 	key, err := resource.UUIDFromResourceName(name, collectionName)
 	if err != nil {
-		return nil, log.Report(err, "failed parsing dataset id")
+		return nil, log.Report(err, "failed parsing artifact id")
 	}
 
 	col, err := db.Collection(ctx, collectionName)
@@ -24,10 +22,10 @@ func Get[T any](ctx context.Context, db driver.Database, name string) (*T, error
 	var dataset T
 	meta, err := col.ReadDocument(ctx, key.String(), &dataset)
 	if err != nil {
-		return nil, log.Report(err, "failed reading dataset in collection")
+		return nil, log.Report(err, "failed reading artifact in collection")
 	}
 
-	log.ArangoMeta(meta, "dataset returned")
+	log.ArangoMeta(meta, "artifact returned")
 
 	return &dataset, nil
 }

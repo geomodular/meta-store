@@ -56,8 +56,10 @@ func (s *datasetSuite) TearDownTest() {
 	col, err := s.db.Collection(ctx, "datasets")
 	s.Require().NoError(err)
 
-	_, _, err = col.RemoveDocuments(ctx, s.datasetKeys)
-	s.Require().NoError(err)
+	if s.datasetKeys != nil {
+		_, _, err = col.RemoveDocuments(ctx, s.datasetKeys)
+		s.Require().NoError(err)
+	}
 
 	s.datasetKeys = nil
 }
@@ -173,6 +175,24 @@ func (s *datasetSuite) TestGetDataset() {
 	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
 	s.Require().NoError(err)
 	s.datasetKeys = []string{key.String()}
+}
+
+func (s *datasetSuite) TestRemoveDataset() {
+	ctx := context.Background()
+	dataset_, err := s.datasetClient.CreateDataset(ctx, &pb.CreateDatasetRequest{
+		Mime: "application/csv",
+		Dataset: &pb.Dataset{
+			Filename:    "iris2.csv",
+			Description: "Iris2 dataset",
+			DisplayName: "Iris2 dataset",
+		},
+	})
+	s.Require().NoError(err)
+
+	_, err = s.datasetClient.RemoveDataset(ctx, &pb.RemoveDatasetRequest{
+		Name: dataset_.Name,
+	})
+	s.Require().NoError(err)
 }
 
 func TestDatasetSuite(t *testing.T) {

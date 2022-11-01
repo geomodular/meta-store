@@ -2,7 +2,7 @@
 .DEFAULT_GOAL = help
 
 
-PROTO_OPTIONS_FILES = dataset_options.proto
+PROTO_OPTIONS_FILES = custom_options.proto
 PROTO_SERVICE_FILES = dataset_service.proto
 PROTO_PLAIN_FILES = dataset.proto
 PROTO_META_FILES = dataset.proto dataset_service.proto

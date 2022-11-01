@@ -4,12 +4,18 @@ package ai.h2o.meta_store;
 
 option go_package = "github.com/geomodular/meta-store/gen/proto/ai/h2o/meta_store";
 
+import "google/protobuf/empty.proto";
 import "ai/h2o/meta_store/dataset.proto";
+import "ai/h2o/meta_store/custom_options.proto";
+
 
 service DatasetService {
+  option (collection_name) = "datasets";
+
   rpc CreateDataset(CreateDatasetRequest) returns (Dataset);
   rpc GetDataset(GetDatasetRequest) returns (Dataset);
   rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse);
+  rpc RemoveDataset(RemoveDatasetRequest) returns (google.protobuf.Empty);
 }
 
 message CreateDatasetRequest {
@@ -49,4 +55,10 @@ message ListDatasetsResponse {
   string next_page_token = 2;
   // Found resources.
   repeated Dataset datasets = 3;
+}
+
+
+message RemoveDatasetRequest {
+  // Required. Name of the dataset to remove.
+  string name = 1;
 }
