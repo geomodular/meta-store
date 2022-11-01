@@ -126,6 +126,11 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 			g.P("err := artifact.Delete(ctx, x.db, \"", collectionName, "\", resourceName)")
 			g.P("if err != nil { return nil, errors.Wrap(err, \"failed removing", bigServiceName, "\") }")
 			g.P("return &", mOutput, "{}, nil")
+		} else if strings.HasPrefix(mName, "Update") {
+			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
+			g.P("outArtifact, err := artifact.Update[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact.Name, inArtifact)")
+			g.P("if err != nil { return nil, errors.Wrap(err, \"failed updating ", bigServiceName, "\") }")
+			g.P("return outArtifact.ToProto(), nil")
 		} else {
 			g.P("panic(\"not implemented\")")
 		}

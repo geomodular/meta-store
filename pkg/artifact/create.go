@@ -19,8 +19,6 @@ func Create[T any](ctx context.Context, db driver.Database, collectionName strin
 	a.SetName(resourceName.String())
 	a.SetParent(serviceName.String())
 
-	// Arango specific.
-
 	col, err := db.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, log.Report(err, "failed searching for collection")

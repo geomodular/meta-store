@@ -89,10 +89,10 @@ func (s *datasetSuite) TestCreateDataset() {
 	_, err = col.ReadDocument(ctx, key.String(), &dataset)
 	s.Require().NoError(err)
 
-	s.Equal(dataset.Filename, "iris.csv")
-	s.Equal(dataset.Description, "Iris dataset")
-	s.Equal(dataset.DisplayName, "Iris dataset")
-	s.Equal(dataset.Parent, "services/metaStore")
+	s.Equal("iris.csv", dataset.Filename)
+	s.Equal("Iris dataset", dataset.Description)
+	s.Equal("Iris dataset", dataset.DisplayName)
+	s.Equal("services/metaStore", dataset.Parent)
 
 	// Clean up documents.
 	s.datasetKeys = []string{key.String()}
@@ -166,10 +166,10 @@ func (s *datasetSuite) TestGetDataset() {
 	})
 	s.Require().NoError(err)
 
-	s.Equal(dataset.Filename, "iris2.csv")
-	s.Equal(dataset.Description, "Iris2 dataset")
-	s.Equal(dataset.DisplayName, "Iris2 dataset")
-	s.Equal(dataset.Parent, "services/metaStore")
+	s.Equal("iris2.csv", dataset.Filename)
+	s.Equal("Iris2 dataset", dataset.Description)
+	s.Equal("Iris2 dataset", dataset.DisplayName)
+	s.Equal("services/metaStore", dataset.Parent)
 
 	// Clean up documents.
 	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
@@ -193,6 +193,35 @@ func (s *datasetSuite) TestRemoveDataset() {
 		Name: dataset_.Name,
 	})
 	s.Require().NoError(err)
+}
+
+func (s *datasetSuite) TestUpdateDataset() {
+	ctx := context.Background()
+	dataset_, err := s.datasetClient.CreateDataset(ctx, &pb.CreateDatasetRequest{
+		Mime: "application/csv",
+		Dataset: &pb.Dataset{
+			Filename:    "iris2.csv",
+			Description: "Iris2 dataset",
+			DisplayName: "Iris2 dataset",
+		},
+	})
+	s.Require().NoError(err)
+
+	dataset, err := s.datasetClient.UpdateDataset(ctx, &pb.UpdateDatasetRequest{
+		Dataset: &pb.Dataset{
+			Name:        dataset_.Name,
+			Description: "Iris dataset",
+		},
+	})
+	s.Require().NoError(err)
+
+	s.Equal(dataset_.Name, dataset.Name)
+	s.Equal("Iris dataset", dataset.Description)
+
+	// Clean up documents.
+	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
+	s.Require().NoError(err)
+	s.datasetKeys = []string{key.String()}
 }
 
 func TestDatasetSuite(t *testing.T) {

@@ -5,6 +5,7 @@ package ai.h2o.meta_store;
 option go_package = "github.com/geomodular/meta-store/gen/proto/ai/h2o/meta_store";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
 import "ai/h2o/meta_store/dataset.proto";
 import "ai/h2o/meta_store/custom_options.proto";
 
@@ -14,6 +15,7 @@ service DatasetService {
 
   rpc CreateDataset(CreateDatasetRequest) returns (Dataset);
   rpc GetDataset(GetDatasetRequest) returns (Dataset);
+  rpc UpdateDataset(UpdateDatasetRequest) returns (Dataset);
   rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse);
   rpc RemoveDataset(RemoveDatasetRequest) returns (google.protobuf.Empty);
 }
@@ -22,15 +24,23 @@ message CreateDatasetRequest {
   // Required. Name of the parent Project in format `services/hydrogenTorch`.
   string parent = 1;
   // Required. MIME type of this resource, for example application/zip.
-  string mime = 3;
+  string mime = 2;
   // Required. Dataset spec.
-  Dataset dataset = 4;
+  Dataset dataset = 3;
 }
 
 
 message GetDatasetRequest {
   // Required. Name of the dataset to get.
   string name = 1;
+}
+
+
+message UpdateDatasetRequest {
+  // Required. The dataset resource which replaces the resource on the server.
+  Dataset dataset = 1;
+  // The update mask applies to the resource.
+  google.protobuf.FieldMask update_mask = 2;
 }
 
 
