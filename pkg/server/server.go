@@ -1,20 +1,20 @@
 package server
 
 import (
-	"github.com/geomodular/meta-store/pkg/service"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"net"
-
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
-	pb "github.com/geomodular/meta-store/gen/ai/h2o/meta_store"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"net"
+
+	_ "github.com/geomodular/meta-store/gen/ai/h2o/meta_store"
+	"github.com/geomodular/meta-store/pkg/server/asset"
 )
 
 const (
 	grpcBind       = ":9090"
-	arangoEndpoint = "http://localhost:8529"
+	arangoEndpoint = "http://root:openSesame@localhost:8529"
 	arangoDB       = "metaStore"
 )
 
@@ -26,10 +26,7 @@ func Run() error {
 	}
 	log.Info().Msgf("connected to arango on %s", arangoEndpoint)
 
-	grpcServer, err := initGRPC(db)
-	if err != nil {
-		return errors.Wrap(err, "failed initializing gRPC server")
-	}
+	grpcServer := initGRPC(db)
 
 	lis, err := net.Listen("tcp", grpcBind)
 	if err != nil {
@@ -73,28 +70,34 @@ func initArango(endpoint, dbName string) (driver.Database, error) {
 		}
 	}
 
-	// TODO: This should be checked and created based on the existing artifacts.
-	// Also CreateCollectionOptions are important.
-	colExists, err := db.CollectionExists(nil, service.DatasetCollection)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed checking for collection existence")
-	}
-
-	if !colExists {
-		_, err = db.CreateCollection(nil, service.DatasetCollection, nil)
+	// Cycle through the registered collections.
+	collections := asset.GetCollections()
+	for _, collection := range collections {
+		colExists, err := db.CollectionExists(nil, collection)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed creating collection")
+			return nil, errors.Wrap(err, "failed checking for collection existence")
+		}
+
+		if !colExists {
+			_, err = db.CreateCollection(nil, collection, nil)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed creating collection")
+			}
 		}
 	}
 
 	return db, nil
 }
 
-func initGRPC(db driver.Database) (*grpc.Server, error) {
-
-	datasetServer := service.NewDatasetServer(db)
+func initGRPC(db driver.Database) *grpc.Server {
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterDatasetServiceServer(grpcServer, datasetServer)
-	return grpcServer, nil
+
+	// Cycle through the auto-generated servers.
+	inits := asset.GetGRPCInitializers()
+	for _, init := range inits {
+		init(grpcServer, db)
+	}
+
+	return grpcServer
 }

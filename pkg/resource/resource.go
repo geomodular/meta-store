@@ -1,4 +1,4 @@
-package utils
+package resource
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ type Resource struct {
 	subResource    *Resource
 }
 
-func NewResource(collectionName, resourceName string) *Resource {
+func New(collectionName, resourceName string) *Resource {
 	return &Resource{
 		collectionName,
 		resourceName,
@@ -19,9 +19,9 @@ func NewResource(collectionName, resourceName string) *Resource {
 	}
 }
 
-// NewResourceFromPairs constructs Resource based on names, pairs of <collectionName, resourceName>.
+// NewFromPairs constructs Resource based on names, pairs of <collectionName, resourceName>.
 // If there is an odd number of names, it sets the last name as resourceName.
-func NewResourceFromPairs(names ...string) *Resource {
+func NewFromPairs(names ...string) *Resource {
 
 	if len(names) == 0 {
 		return nil
@@ -55,7 +55,7 @@ func NewResourceFromPairs(names ...string) *Resource {
 // ParseResource takes a resource in a form of idiomatic path, parses it and returns a Resource.
 func ParseResource(resourceName string) *Resource {
 	s := strings.Split(resourceName, "/")
-	return NewResourceFromPairs(s...)
+	return NewFromPairs(s...)
 }
 
 // CollectionName returns a collection name.
@@ -115,10 +115,10 @@ func (r Resource) Add(collectionName, resourceName string) *Resource {
 	return rt
 }
 
-// AddPairs adds new pairs <collectionName, resourceName> to resource the same way as NewResourceFromPairs().
+// AddPairs adds new pairs <collectionName, resourceName> to resource the same way as NewFromPairs().
 func (r Resource) AddPairs(names ...string) *Resource {
 	rt := r.deepCopy()
-	resource := NewResourceFromPairs(names...)
+	resource := NewFromPairs(names...)
 	return rt.Join(resource)
 }
 

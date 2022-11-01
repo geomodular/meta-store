@@ -1,11 +1,11 @@
-package service
+package test
 
 import (
 	"context"
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
 	pb "github.com/geomodular/meta-store/gen/ai/h2o/meta_store"
-	"github.com/geomodular/meta-store/pkg/utils"
+	"github.com/geomodular/meta-store/pkg/resource"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -14,7 +14,7 @@ import (
 
 const (
 	grpcEndpoint   = "localhost:9090"
-	arangoEndpoint = "http://localhost:8529"
+	arangoEndpoint = "http://root:openSesame@localhost:8529"
 	arangoDB       = "metaStore"
 )
 
@@ -53,7 +53,7 @@ func (s *datasetSuite) SetupSuite() {
 func (s *datasetSuite) TearDownTest() {
 	ctx := context.Background()
 
-	col, err := s.db.Collection(ctx, DatasetCollection)
+	col, err := s.db.Collection(ctx, "datasets")
 	s.Require().NoError(err)
 
 	_, _, err = col.RemoveDocuments(ctx, s.datasetKeys)
@@ -63,6 +63,9 @@ func (s *datasetSuite) TearDownTest() {
 }
 
 func (s *datasetSuite) TestCreateDataset() {
+
+	collectionName := "datasets"
+
 	ctx := context.Background()
 	dataset_, err := s.datasetClient.CreateDataset(ctx, &pb.CreateDatasetRequest{
 		Mime: "application/csv",
@@ -74,10 +77,10 @@ func (s *datasetSuite) TestCreateDataset() {
 	})
 	s.Require().NoError(err)
 
-	key, err := utils.DatasetIDFromResourceName(dataset_.GetName())
+	key, err := resource.UUIDFromResourceName(dataset_.GetName(), collectionName)
 	s.Require().NoError(err)
 
-	col, err := s.db.Collection(ctx, DatasetCollection)
+	col, err := s.db.Collection(ctx, collectionName)
 	s.Require().NoError(err)
 
 	var dataset pb.MetaDataset
@@ -109,7 +112,7 @@ func (s *datasetSuite) TestListDatasets() {
 		})
 		s.Require().NoError(err)
 
-		key, err := utils.DatasetIDFromResourceName(dataset_.GetName())
+		key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
 		s.Require().NoError(err)
 
 		keys = append(keys, key.String())
@@ -167,7 +170,7 @@ func (s *datasetSuite) TestGetDataset() {
 	s.Equal(dataset.Parent, "services/metaStore")
 
 	// Clean up documents.
-	key, err := utils.DatasetIDFromResourceName(dataset_.GetName())
+	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
 	s.Require().NoError(err)
 	s.datasetKeys = []string{key.String()}
 }

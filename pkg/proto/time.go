@@ -1,4 +1,4 @@
-package utils
+package proto
 
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"

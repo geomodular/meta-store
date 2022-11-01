@@ -1,4 +1,4 @@
-package utils
+package resource
 
 import (
 	"fmt"
@@ -9,11 +9,10 @@ import (
 const (
 	MetaStoreResourceName = "metaStore"
 	ServiceCollectionName = "services"
-	DatasetCollectionName = "datasets"
 )
 
 func NewServiceResource(name string) *Resource {
-	return NewResource(ServiceCollectionName, name)
+	return New(ServiceCollectionName, name)
 }
 
 func UnpackServiceResource(r *Resource) (string, error) {
@@ -23,16 +22,14 @@ func UnpackServiceResource(r *Resource) (string, error) {
 	return "", fmt.Errorf("not a service resource: %s", r)
 }
 
-func NewDatasetResource(collectionID uuid.UUID) *Resource {
-	return NewResource(DatasetCollectionName, collectionID.String())
-}
-
-func NewParentResource() *Resource {
+func NewMetaStoreResource() *Resource {
 	return NewServiceResource(MetaStoreResourceName)
 }
 
-func UnpackDatasetResource(r *Resource) (uuid.UUID, error) {
-	if r.collectionName == DatasetCollectionName {
+// TODO: func NewUUIDResource(collectionName string, collectionID uuid.UUID) *Resource
+
+func UnpackUUIDResource(r *Resource, collectionName string) (uuid.UUID, error) {
+	if r.collectionName == collectionName {
 		collectionID, err := uuid.Parse(r.resourceName)
 		if err != nil {
 			return uuid.UUID{}, errors.Wrapf(err, "failed parsing dataset uuid: %s", r.resourceName)
@@ -42,12 +39,12 @@ func UnpackDatasetResource(r *Resource) (uuid.UUID, error) {
 	return uuid.UUID{}, fmt.Errorf("not a project resource: %s", r)
 }
 
-func DatasetIDFromResourceName(resourceName string) (uuid.UUID, error) {
+func UUIDFromResourceName(resourceName string, collectionName string) (uuid.UUID, error) {
 	r := ParseResource(resourceName)
-	artifactResource, ok := r.FindByCollection(DatasetCollectionName)
+	artifactResource, ok := r.FindByCollection(collectionName)
 
 	if ok {
-		collectionID, err := UnpackDatasetResource(artifactResource)
+		collectionID, err := UnpackUUIDResource(artifactResource, collectionName)
 		if err != nil {
 			return uuid.UUID{}, errors.Wrap(err, "failed unpacking artifact resource")
 		}

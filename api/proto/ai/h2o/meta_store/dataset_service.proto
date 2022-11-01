@@ -4,26 +4,12 @@ package ai.h2o.meta_store;
 
 option go_package = "github.com/geomodular/meta-store/gen/proto/ai/h2o/meta_store";
 
-import "google/api/annotations.proto";
 import "ai/h2o/meta_store/dataset.proto";
 
 service DatasetService {
-  rpc CreateDataset(CreateDatasetRequest) returns (Dataset) {
-    option(google.api.http) = {
-      post: "/{parent=services/metaStore}/datasets"
-      body: "*"
-    };
-  }
-  rpc GetDataset(GetDatasetRequest) returns (Dataset) {
-    option(google.api.http) = {
-      get: "/{name=services/metaStore/datasets/*/versions/*}"
-    };
-  }
-  rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse) {
-    option(google.api.http) = {
-      get: "/{parent=services/metaStore}/datasets",
-    };
-  }
+  rpc CreateDataset(CreateDatasetRequest) returns (Dataset);
+  rpc GetDataset(GetDatasetRequest) returns (Dataset);
+  rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse);
 }
 
 message CreateDatasetRequest {

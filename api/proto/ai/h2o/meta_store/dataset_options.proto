@@ -14,4 +14,5 @@ enum CollectionType {
 
 extend google.protobuf.MessageOptions {
   optional CollectionType collection_type = 50000;
+  optional string collection_name = 50001;
 }

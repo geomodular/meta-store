@@ -5,7 +5,7 @@
 PROTO_OPTIONS_FILES = dataset_options.proto
 PROTO_SERVICE_FILES = dataset_service.proto
 PROTO_PLAIN_FILES = dataset.proto
-PROTO_META_FILES = dataset.proto
+PROTO_META_FILES = dataset.proto dataset_service.proto
 
 # Proto files; precedence matters
 PROTO_FILES = $(call to_proto, $(PROTO_OPTIONS_FILES)) $(call to_proto, $(PROTO_PLAIN_FILES)) $(call to_proto, $(PROTO_SERVICE_FILES))
