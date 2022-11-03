@@ -9,6 +9,8 @@ import (
 
 func Update[T any](ctx context.Context, db driver.Database, collectionName, name string, a *T) (*T, error) {
 
+	// TODO: use field mask
+
 	key, err := resource.UUIDFromResourceName(name, collectionName)
 	if err != nil {
 		return nil, log.Report(err, "failed parsing artifact id")

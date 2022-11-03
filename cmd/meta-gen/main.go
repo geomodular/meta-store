@@ -13,6 +13,16 @@ import (
 	option "github.com/geomodular/meta-store/gen/ai/h2o/meta_store"
 )
 
+const (
+	contextPackage      = protogen.GoImportPath("context")
+	arangoDriverPackage = protogen.GoImportPath("github.com/arangodb/go-driver")
+	assetPackage        = protogen.GoImportPath("github.com/geomodular/meta-store/pkg/server/asset")
+	artifactPackage     = protogen.GoImportPath("github.com/geomodular/meta-store/pkg/artifact")
+	errorsPackage       = protogen.GoImportPath("github.com/pkg/errors")
+	grpcPackage         = protogen.GoImportPath("google.golang.org/grpc")
+	protoPackage        = protogen.GoImportPath("github.com/geomodular/meta-store/pkg/proto")
+)
+
 func main() {
 	protogen.Options{}.Run(func(gen *protogen.Plugin) error {
 		for _, f := range gen.Files {
@@ -33,14 +43,6 @@ func genAll(plugin *protogen.Plugin, file *protogen.File) *protogen.GeneratedFil
 	genHeader(g, file)
 
 	for _, service := range file.Services {
-
-		// TODO: Check how to import correctly!
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "context"})
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/arangodb/go-driver"})
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/geomodular/meta-store/pkg/server/asset"})
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/geomodular/meta-store/pkg/artifact"})
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/pkg/errors"})
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "google.golang.org/grpc"})
 		genService(g, service)
 	}
 
@@ -70,13 +72,13 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 	collectionName := proto.GetExtension(options, option.E_CollectionName).(string)
 
 	g.P("func init() {")
-	g.P("asset.RegisterGRPCInitializer(initGRPC)")
-	g.P("asset.RegisterCollection(\"", collectionName, "\")")
+	g.P(assetPackage.Ident("RegisterGRPCInitializer"), "(initGRPC)")
+	g.P(assetPackage.Ident("RegisterCollection"), "(\"", collectionName, "\")")
 	g.P("}")
 
 	g.P()
 
-	g.P("func initGRPC(grpcServer *grpc.Server, db go_driver.Database) {")
+	g.P("func initGRPC(grpcServer *", grpcPackage.Ident("Server"), ", db ", arangoDriverPackage.Ident("Database"), ") {")
 	g.P(smallServiceName, "Server := New", bigServiceName, "ServiceServer(db)")
 	g.P("Register", bigServiceName, "ServiceServer(grpcServer, ", smallServiceName, "Server)")
 	g.P("}")
@@ -84,12 +86,12 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 	g.P()
 
 	g.P("type ", serviceStructName, " struct {")
-	g.P("db go_driver.Database") // Too Specific
+	g.P("db ", arangoDriverPackage.Ident("Database"))
 	g.P("}")
 
 	g.P()
 
-	g.P("func New", bigServiceName, "ServiceServer(db go_driver.Database) *", serviceStructName, " {")
+	g.P("func New", bigServiceName, "ServiceServer(db ", arangoDriverPackage.Ident("Database"), ") *", serviceStructName, " {")
 	g.P("return &", serviceStructName, "{db: db}")
 	g.P("}")
 
@@ -102,34 +104,34 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 		// TODO: what to do with plural?
 		// TODO: use switch and f() function to determine method type
 
-		g.P("func (x *", serviceStructName, ") ", mName, "(ctx context.Context, req *", mInput, ") (*", mOutput, ", error) {")
+		g.P("func (x *", serviceStructName, ") ", mName, "(ctx ", contextPackage.Ident("Context"), ", req *", mInput, ") (*", mOutput, ", error) {")
 		if strings.HasPrefix(mName, "Create") {
 			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
-			g.P("outArtifact, err := artifact.Create[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact)")
-			g.P("if err != nil { return nil, errors.Wrap(err, \"failed creating ", bigServiceName, "\") }")
+			g.P("outArtifact, err := ", artifactPackage.Ident("Create"), "[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact)")
+			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed creating ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
 		} else if strings.HasPrefix(mName, "Get") {
 			g.P("resourceName := req.GetName()")
-			g.P("outArtifact, err := artifact.Get[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", resourceName)")
-			g.P("if err != nil { return nil, errors.Wrap(err, \"failed getting ", bigServiceName, "\") }")
+			g.P("outArtifact, err := ", artifactPackage.Ident("Get"), "[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", resourceName)")
+			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed getting ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
 		} else if strings.HasPrefix(mName, "List") {
 			g.P("inToken := req.GetPageToken()")
 			g.P("inSize := int(req.GetPageSize())")
-			g.P("outToken, outSize, outArtifacts, err := artifact.List[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inToken, inSize)")
-			g.P("if err != nil { return nil, errors.Wrap(err, \"failed listing ", bigServiceName, "\") }")
+			g.P("outToken, outSize, outArtifacts, err := ", artifactPackage.Ident("List"), "[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inToken, inSize)")
+			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed listing ", bigServiceName, "\") }")
 			g.P("var artifacts []*", bigServiceName)
 			g.P("for _, a := range outArtifacts { artifacts = append(artifacts, a.ToProto()) }")
 			g.P("return &", mOutput, "{ NextPageToken: outToken, TotalSize: int32(outSize), ", bigServiceName, "s: artifacts }, nil")
 		} else if strings.HasPrefix(mName, "Remove") {
 			g.P("resourceName := req.GetName()")
 			g.P("err := artifact.Delete(ctx, x.db, \"", collectionName, "\", resourceName)")
-			g.P("if err != nil { return nil, errors.Wrap(err, \"failed removing", bigServiceName, "\") }")
+			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed removing", bigServiceName, "\") }")
 			g.P("return &", mOutput, "{}, nil")
 		} else if strings.HasPrefix(mName, "Update") {
 			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
 			g.P("outArtifact, err := artifact.Update[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact.Name, inArtifact)")
-			g.P("if err != nil { return nil, errors.Wrap(err, \"failed updating ", bigServiceName, "\") }")
+			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed updating ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
 		} else {
 			g.P("panic(\"not implemented\")")
@@ -142,6 +144,7 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 
 	// NOTE: To load extension ahead check: https://github.com/golang/protobuf/issues/1260
 	options := message.Desc.Options().(*descriptorpb.MessageOptions)
+
 	collectionType := proto.GetExtension(options, option.E_CollectionType).(option.CollectionType)
 
 	// TODO: Clean up.
@@ -175,8 +178,7 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 		t, _ := fieldGoType(g, field)
 		switch t {
 		case "time.Time":
-			g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/geomodular/meta-store/pkg/proto"})
-			g.P(field.GoName, ": proto.ToProtoTimestamp(x.", field.GoName, "),")
+			g.P(field.GoName, ": ", protoPackage.Ident("ToProtoTimestamp"), "(x.", field.GoName, "),")
 		default:
 			g.P(field.GoName, ": x.", field.GoName, ",")
 		}
@@ -205,8 +207,7 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 		t, _ := fieldGoType(g, field)
 		switch t {
 		case "time.Time":
-			g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/geomodular/meta-store/pkg/proto"})
-			g.P(field.GoName, ": proto.FromProtoTimestamp(dataset.", field.GoName, "),")
+			g.P(field.GoName, ": ", protoPackage.Ident("FromProtoTimestamp"), "(dataset.", field.GoName, "),")
 		default:
 			g.P(field.GoName, ": dataset.", field.GoName, ",")
 		}
