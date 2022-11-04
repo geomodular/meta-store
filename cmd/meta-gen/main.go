@@ -97,25 +97,26 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 
 	for _, method := range service.Methods {
 		mName := method.GoName
+		mType := determineMethodType(mName)
 		mInput := method.Input.GoIdent
 		mOutput := method.Output.GoIdent
 
 		// TODO: bigServiceName != Meta equivalent
 		// TODO: what to do with plural?
-		// TODO: use switch and f() function to determine method type
 
 		g.P("func (x *", serviceStructName, ") ", mName, "(ctx ", contextPackage.Ident("Context"), ", req *", mInput, ") (*", mOutput, ", error) {")
-		if strings.HasPrefix(mName, "Create") {
+		switch mType {
+		case CREATE:
 			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
 			g.P("outArtifact, err := ", artifactPackage.Ident("Create"), "[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact)")
 			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed creating ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
-		} else if strings.HasPrefix(mName, "Get") {
+		case GET:
 			g.P("resourceName := req.GetName()")
 			g.P("outArtifact, err := ", artifactPackage.Ident("Get"), "[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", resourceName)")
 			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed getting ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
-		} else if strings.HasPrefix(mName, "List") {
+		case LIST:
 			g.P("inToken := req.GetPageToken()")
 			g.P("inSize := int(req.GetPageSize())")
 			g.P("outToken, outSize, outArtifacts, err := ", artifactPackage.Ident("List"), "[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inToken, inSize)")
@@ -123,17 +124,17 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 			g.P("var artifacts []*", bigServiceName)
 			g.P("for _, a := range outArtifacts { artifacts = append(artifacts, a.ToProto()) }")
 			g.P("return &", mOutput, "{ NextPageToken: outToken, TotalSize: int32(outSize), ", bigServiceName, "s: artifacts }, nil")
-		} else if strings.HasPrefix(mName, "Remove") {
+		case REMOVE:
 			g.P("resourceName := req.GetName()")
 			g.P("err := artifact.Delete(ctx, x.db, \"", collectionName, "\", resourceName)")
 			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed removing", bigServiceName, "\") }")
 			g.P("return &", mOutput, "{}, nil")
-		} else if strings.HasPrefix(mName, "Update") {
+		case UPDATE:
 			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
 			g.P("outArtifact, err := artifact.Update[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact.Name, inArtifact)")
 			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed updating ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
-		} else {
+		default:
 			g.P("panic(\"not implemented\")")
 		}
 		g.P("}")
@@ -142,20 +143,19 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 
 func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 
-	// NOTE: To load extension ahead check: https://github.com/golang/protobuf/issues/1260
 	options := message.Desc.Options().(*descriptorpb.MessageOptions)
-
 	collectionType := proto.GetExtension(options, option.E_CollectionType).(option.CollectionType)
 
-	// TODO: Clean up.
-	if collectionType == option.CollectionType_DOCUMENT {
-		g.P("// Meta", message.GoIdent, " is a DOCUMENT type collection.")
-	} else if collectionType == option.CollectionType_EDGE {
-		g.P("// Meta", message.GoIdent, " is an EDGE type collection.")
-	} else {
+	if collectionType == option.CollectionType_UNDEFINED {
 		return // Messages that don't have collection type are not processed.
 	}
 
+	genMetaStruct(g, message)
+	genAccessors(g, message)
+	genProtoConversions(g, message)
+}
+
+func genMetaStruct(g *protogen.GeneratedFile, message *protogen.Message) {
 	g.P("type Meta", message.GoIdent, " struct {")
 	g.P()
 	g.P("// Mandatory `key` field.")
@@ -172,20 +172,9 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 	}
 	g.P("}")
 	g.P()
-	g.P("func (x *Meta", message.GoIdent, ") ToProto() *", message.GoIdent, "{")
-	g.P("return &", message.GoIdent, "{")
-	for _, field := range message.Fields {
-		t, _ := fieldGoType(g, field)
-		switch t {
-		case "time.Time":
-			g.P(field.GoName, ": ", protoPackage.Ident("ToProtoTimestamp"), "(x.", field.GoName, "),")
-		default:
-			g.P(field.GoName, ": x.", field.GoName, ",")
-		}
-	}
-	g.P("}")
-	g.P("}")
-	g.P()
+}
+
+func genAccessors(g *protogen.GeneratedFile, message *protogen.Message) {
 	g.P("func (x *Meta", message.GoIdent, ") SetKey(value string) {")
 	g.P("x.Key = value")
 	g.P("}")
@@ -199,6 +188,23 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 		default:
 		}
 	}
+	g.P()
+}
+
+func genProtoConversions(g *protogen.GeneratedFile, message *protogen.Message) {
+	g.P("func (x *Meta", message.GoIdent, ") ToProto() *", message.GoIdent, "{")
+	g.P("return &", message.GoIdent, "{")
+	for _, field := range message.Fields {
+		t, _ := fieldGoType(g, field)
+		switch t {
+		case "time.Time":
+			g.P(field.GoName, ": ", protoPackage.Ident("ToProtoTimestamp"), "(x.", field.GoName, "),")
+		default:
+			g.P(field.GoName, ": x.", field.GoName, ",")
+		}
+	}
+	g.P("}")
+	g.P("}")
 	g.P()
 	g.P("func NewMeta", message.GoIdent, "FromProto(dataset *", message.GoIdent, ") *Meta", message.GoIdent, "{")
 	g.P("return &Meta", message.GoIdent, "{")
@@ -214,6 +220,7 @@ func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 	}
 	g.P("}")
 	g.P("}")
+	g.P()
 }
 
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
@@ -290,4 +297,30 @@ func fieldGoType(g *protogen.GeneratedFile, field *protogen.Field) (goType strin
 	}
 
 	return goType, pointer
+}
+
+type methodType int
+
+const (
+	UNKNOWN methodType = iota
+	CREATE
+	GET
+	LIST
+	REMOVE
+	UPDATE
+)
+
+func determineMethodType(name string) methodType {
+	if strings.HasPrefix(name, "Create") {
+		return CREATE
+	} else if strings.HasPrefix(name, "Get") {
+		return GET
+	} else if strings.HasPrefix(name, "List") {
+		return LIST
+	} else if strings.HasPrefix(name, "Remove") {
+		return REMOVE
+	} else if strings.HasPrefix(name, "Update") {
+		return UPDATE
+	}
+	return UNKNOWN
 }
