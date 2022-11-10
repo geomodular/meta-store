@@ -7,4 +7,6 @@ docker run -it --name=adb --rm -p 8528:8528 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     arangodb/arangodb-starter \
     --starter.address=$IP \
-    --starter.mode=single 
+    --starter.mode=single \
+    --docker.container=adb
+

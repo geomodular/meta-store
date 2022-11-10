@@ -2,21 +2,23 @@
 .DEFAULT_GOAL = help
 
 
-PROTO_OPTIONS_FILES = custom_options.proto
-PROTO_SERVICE_FILES = dataset_service.proto
-PROTO_PLAIN_FILES = dataset.proto
-PROTO_META_FILES = dataset.proto dataset_service.proto
+# Edit this {
+PROTO_CUSTOM_OPTIONS_FILES = custom_options.proto
+PROTO_FILES = dataset.proto
+# }
 
-# Proto files; precedence matters
-PROTO_FILES = $(call to_proto, $(PROTO_OPTIONS_FILES)) $(call to_proto, $(PROTO_PLAIN_FILES)) $(call to_proto, $(PROTO_SERVICE_FILES))
-PB_GO_FILES = $(call to_pb_go, $(PROTO_FILES))
-PB_META_GO_FILES = $(call to_pb_meta_go, $(PROTO_META_FILES))
+CUSTOM_OPTIONS_PB_GO_FILES = $(call to_pb_go, $(PROTO_CUSTOM_OPTIONS_FILES))
+PROTO_SERVICE_FILES = $(call to_service_proto, $(PROTO_FILES))
+PB_GRPC_GO_FILES = $(call to_pb_go, $(PROTO_FILES)) $(call to_pb_go, $(PROTO_SERVICE_FILES))
+PB_META_GO_FILES = $(call to_pb_meta_go, $(PROTO_FILES)) $(call to_pb_meta_go, $(PROTO_SERVICE_FILES))
 
 # Functions to nicely convert paths
 to_proto = $(addprefix api/proto/ai/h2o/meta_store/, $(notdir $(1:.pb.go=.proto)))
 to_proto_from_meta = $(addprefix api/proto/ai/h2o/meta_store/, $(notdir $(1:.pb.meta.go=.proto)))
+to_proto_from_service = $(addprefix api/proto/ai/h2o/meta_store/, $(notdir $(1:_service.proto=.proto)))
 to_pb_go = $(addprefix gen/ai/h2o/meta_store/, $(notdir $(1:.proto=.pb.go)))
 to_pb_meta_go = $(addprefix gen/ai/h2o/meta_store/, $(notdir $(1:.proto=.pb.meta.go)))
+to_service_proto = $(addprefix api/proto/ai/h2o/meta_store/, $(notdir $(1:.proto=_service.proto)))
 
 GOOGLE_RPC_PROTO_FILES = api/third-party/google/rpc/status.proto
 GOOGLE_API_PROTO_FILES = api/third-party/google/api/annotations.proto api/third-party/google/api/field_behavior.proto api/third-party/google/api/http.proto
@@ -36,7 +38,7 @@ gen:
 
 
 .SECONDEXPANSION:
-$(PB_GO_FILES): $$(call to_proto, $$@) $(PROTO_FILES) $(GOOGLE_PROTO_FILES) | gen
+$(CUSTOM_OPTIONS_PB_GO_FILES): $$(call to_proto, $$@) $(GOOGLE_PROTO_FILES) | gen
 	protoc \
 		-I /usr/local/include \
 		-I api/third-party \
@@ -48,7 +50,19 @@ $(PB_GO_FILES): $$(call to_proto, $$@) $(PROTO_FILES) $(GOOGLE_PROTO_FILES) | ge
 
 
 .SECONDEXPANSION:
-$(PB_META_GO_FILES): $$(call to_proto_from_meta, $$@) $(PROTO_FILES) protoc-gen-meta $(GOOGLE_PROTO_FILES) | gen
+$(PB_GRPC_GO_FILES): $$(call to_proto, $$@) $(GOOGLE_PROTO_FILES) | gen
+	protoc \
+		-I /usr/local/include \
+		-I api/third-party \
+		-I api/proto \
+		--go_out gen/ \
+		--go_opt plugins=grpc \
+		--go_opt paths=source_relative \
+		$<
+
+
+.SECONDEXPANSION:
+$(PB_META_GO_FILES): $$(call to_proto_from_meta, $$@) protoc-gen-meta $(GOOGLE_PROTO_FILES) | gen
 	protoc \
 		--plugin protoc-gen-meta \
 		-I /usr/local/include \
@@ -59,14 +73,29 @@ $(PB_META_GO_FILES): $$(call to_proto_from_meta, $$@) $(PROTO_FILES) protoc-gen-
 		$<
 
 
+.SECONDEXPANSION:
+$(PROTO_SERVICE_FILES): $$(call to_proto_from_service, $$@) protoc-gen-service $(GOOGLE_PROTO_FILES) | gen
+	protoc \
+		--plugin protoc-gen-service \
+		-I /usr/local/include \
+		-I api/third-party \
+		-I api/proto \
+		--service_out api/proto \
+		--service_opt paths=source_relative \
+		$<
+
+
 .PHONY: generate
-generate: $(PB_GO_FILES) protoc-gen-meta $(PB_META_GO_FILES)  ## Generates `.go` files from `.proto`. (mandatory step)
+generate: $(CUSTOM_OPTIONS_PB_GO_FILES) protoc-gen-service $(PROTO_SERVICE_FILES) $(PB_GRPC_GO_FILES) protoc-gen-meta $(PB_META_GO_FILES)  ## Generates `.go` files from `.proto`. (mandatory step)
 
 GO_FILES = $(shell find . -name '*.go')
 server: $(GO_FILES)  ## Builds meta server.
 	CGO_ENABLED=0 go build -o $@ cmd/meta-store/main.go
 
 protoc-gen-meta: cmd/meta-gen/main.go
+	CGO_ENABLED=0 go build -o $@ $<
+
+protoc-gen-service: cmd/service-gen/main.go
 	CGO_ENABLED=0 go build -o $@ $<
 
 .PHONY: test
@@ -78,7 +107,9 @@ clean:  ## Cleans all generated and compiled files.
 	rm -rf api/third-party
 	rm -rf gen
 	rm -f protoc-gen-meta
+	rm -f protoc-gen-service
 	rm -f server
+	rm -f api/proto/ai/h2o/meta_store/*_service.proto
 
 # Utilities
 

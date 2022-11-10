@@ -11,7 +11,8 @@ import "ai/h2o/meta_store/custom_options.proto";
 // Dataset.
 message Dataset {
 
-  option (collection_type) = DOCUMENT;
+  option (collection_options).name = "datasets";
+  option (collection_options).type = DOCUMENT;
 
   // Output only. Name of the Dataset resource in format `services/metaStore/datasets/<UUID>`.
   string name = 1;

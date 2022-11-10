@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	// Generated files - mandatory for (custom) options.
 	option "github.com/geomodular/meta-store/gen/ai/h2o/meta_store"
 )
 
@@ -144,9 +143,9 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 func genMessage(g *protogen.GeneratedFile, message *protogen.Message) {
 
 	options := message.Desc.Options().(*descriptorpb.MessageOptions)
-	collectionType := proto.GetExtension(options, option.E_CollectionType).(option.CollectionType)
+	collectionOpts := proto.GetExtension(options, option.E_CollectionOptions).(*option.CollectionOptions)
 
-	if collectionType == option.CollectionType_UNDEFINED {
+	if collectionOpts.GetType() == option.CollectionType_UNDEFINED {
 		return // Messages that don't have collection type are not processed.
 	}
 
