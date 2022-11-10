@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -61,12 +63,14 @@ func genHeader(g *protogen.GeneratedFile, file *protogen.File) {
 
 func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 
-	// NOTE: To load extension ahead check: https://github.com/golang/protobuf/issues/1260
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
+
 	options := service.Desc.Options().(*descriptorpb.ServiceOptions)
 
 	serviceName := strings.TrimSuffix(service.GoName, "Service")
-	bigServiceName := capitalize(serviceName)
-	smallServiceName := lower(serviceName)
+	bigServiceName := toTitle.String(serviceName)
+	smallServiceName := toLower.String(serviceName)
 	serviceStructName := fmt.Sprintf("%sServiceServer", smallServiceName)
 	collectionName := proto.GetExtension(options, option.E_CollectionName).(string)
 
@@ -99,9 +103,6 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 		mType := determineMethodType(mName)
 		mInput := method.Input.GoIdent
 		mOutput := method.Output.GoIdent
-
-		// TODO: bigServiceName != Meta equivalent
-		// TODO: what to do with plural?
 
 		g.P("func (x *", serviceStructName, ") ", mName, "(ctx ", contextPackage.Ident("Context"), ", req *", mInput, ") (*", mOutput, ", error) {")
 		switch mType {
@@ -227,17 +228,10 @@ var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 // https://stackoverflow.com/questions/56616196/how-to-convert-camel-case-string-to-snake-case
 func toSnakeCase(str string) string {
+	toLower := cases.Lower(language.AmericanEnglish)
 	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
 	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToLower(snake)
-}
-
-func capitalize(str string) string {
-	return strings.ToUpper(str[0:1]) + str[1:]
-}
-
-func lower(str string) string {
-	return strings.ToLower(str[0:1]) + str[1:]
+	return toLower.String(snake)
 }
 
 func toArangoIdent(name string) string {

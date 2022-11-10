@@ -1,7 +1,8 @@
 package grammar
 
 import (
-	"strings"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var immutableWords = map[string]bool{
@@ -38,7 +39,8 @@ var exceptions = map[string]string{
 // names used in e.g. APIs.
 func Pluralize(word string) string {
 
-	w := strings.ToLower(word)
+	toLower := cases.Lower(language.AmericanEnglish)
+	w := toLower.String(word)
 
 	if immutableWords[w] {
 		return w
