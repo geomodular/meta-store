@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// ToProtoTimestamp converts given time.Time to timestamppb.Timestamp
+// ToProtoTimestamp converts given time.Time to timestamppb.Timestamp.
 func ToProtoTimestamp(ts time.Time) *timestamppb.Timestamp {
 	return &timestamppb.Timestamp{
 		Seconds: ts.Unix(), // This also does UTC conversion.
@@ -13,7 +13,7 @@ func ToProtoTimestamp(ts time.Time) *timestamppb.Timestamp {
 	}
 }
 
-// FromProtoTimestamp converts given timestamppb.Timestamp to time.Time
+// FromProtoTimestamp converts given timestamppb.Timestamp to time.Time.
 func FromProtoTimestamp(timestamp *timestamppb.Timestamp) time.Time {
 	if timestamp == nil {
 		return time.Time{}

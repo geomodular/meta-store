@@ -93,6 +93,7 @@ func (s *datasetSuite) TestCreateDataset() {
 	s.Equal("Iris dataset", dataset.Description)
 	s.Equal("Iris dataset", dataset.DisplayName)
 	s.Equal("services/metaStore", dataset.Parent)
+	s.NotEmpty(dataset.Etag)
 
 	// Clean up documents.
 	s.datasetKeys = []string{key.String()}
@@ -170,6 +171,7 @@ func (s *datasetSuite) TestGetDataset() {
 	s.Equal("Iris2 dataset", dataset.Description)
 	s.Equal("Iris2 dataset", dataset.DisplayName)
 	s.Equal("services/metaStore", dataset.Parent)
+	s.Equal(dataset_.Etag, dataset.Etag)
 
 	// Clean up documents.
 	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
@@ -211,12 +213,41 @@ func (s *datasetSuite) TestUpdateDataset() {
 		Dataset: &pb.Dataset{
 			Name:        dataset_.Name,
 			Description: "Iris dataset",
+			Etag:        dataset_.Etag,
 		},
 	})
 	s.Require().NoError(err)
 
 	s.Equal(dataset_.Name, dataset.Name)
 	s.Equal("Iris dataset", dataset.Description)
+	s.NotEqual(dataset_.Etag, dataset.Etag)
+
+	// Clean up documents.
+	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")
+	s.Require().NoError(err)
+	s.datasetKeys = []string{key.String()}
+}
+
+func (s *datasetSuite) TestUpdateButDifferentETagDataset() {
+	ctx := context.Background()
+	dataset_, err := s.datasetClient.CreateDataset(ctx, &pb.CreateDatasetRequest{
+		Mime: "application/csv",
+		Dataset: &pb.Dataset{
+			Filename:    "iris2.csv",
+			Description: "Iris2 dataset",
+			DisplayName: "Iris2 dataset",
+		},
+	})
+	s.Require().NoError(err)
+
+	_, err = s.datasetClient.UpdateDataset(ctx, &pb.UpdateDatasetRequest{
+		Dataset: &pb.Dataset{
+			Name:        dataset_.Name,
+			Description: "Iris dataset",
+			Etag:        "\"nonsense\"",
+		},
+	})
+	s.EqualError(err, "rpc error: code = Unknown desc = failed updating Dataset: rpc error: code = Aborted desc = aborted")
 
 	// Clean up documents.
 	key, err := resource.UUIDFromResourceName(dataset_.GetName(), "datasets")

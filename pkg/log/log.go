@@ -12,6 +12,11 @@ func Report(err error, msg string, a ...interface{}) error {
 	return status.Error(codes.Internal, "internal error")
 }
 
+func ReportAborted(err error, msg string, a ...interface{}) error {
+	log.Error().Err(err).Msgf(msg, a...)
+	return status.Error(codes.Aborted, "aborted")
+}
+
 func ArangoMeta(meta driver.DocumentMeta, msg string) {
 	log.Info().Str("id", meta.ID.String()).Str("rev", meta.Rev).Str("old_rev", meta.OldRev).Msg(msg)
 }

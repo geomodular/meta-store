@@ -104,12 +104,15 @@ test:  ## Run tests. (needs a running server and clean database)
 
 .PHONY: clean
 clean:  ## Cleans all generated and compiled files.
-	rm -rf api/third-party
 	rm -rf gen
 	rm -f protoc-gen-meta
 	rm -f protoc-gen-service
 	rm -f server
 	rm -f api/proto/ai/h2o/meta_store/*_service.proto
+
+.PHONY: purge
+purge: clean  ## Cleans all generated and compiled files along with downloaded proto files.
+	rm -rf api/third-party
 
 # Utilities
 

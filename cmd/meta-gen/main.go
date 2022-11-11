@@ -131,7 +131,7 @@ func genService(g *protogen.GeneratedFile, service *protogen.Service) {
 			g.P("return &", mOutput, "{}, nil")
 		case UPDATE:
 			g.P("inArtifact := NewMeta", bigServiceName, "FromProto(req.Get", bigServiceName, "())")
-			g.P("outArtifact, err := artifact.Update[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact.Name, inArtifact)")
+			g.P("outArtifact, err := artifact.Update[Meta", bigServiceName, "](ctx, x.db, \"", collectionName, "\", inArtifact.Name, inArtifact.Etag, inArtifact)")
 			g.P("if err != nil { return nil, ", errorsPackage.Ident("Wrap"), "(err, \"failed updating ", bigServiceName, "\") }")
 			g.P("return outArtifact.ToProto(), nil")
 		default:
@@ -199,24 +199,34 @@ func genProtoConversions(g *protogen.GeneratedFile, message *protogen.Message) {
 		switch t {
 		case "time.Time":
 			g.P(field.GoName, ": ", protoPackage.Ident("ToProtoTimestamp"), "(x.", field.GoName, "),")
-		default:
-			g.P(field.GoName, ": x.", field.GoName, ",")
+			continue
 		}
+		switch field.GoName {
+		case "Etag":
+			g.P(field.GoName, ": ", protoPackage.Ident("ToProtoETag"), "(x.", field.GoName, "),")
+			continue
+		}
+		g.P(field.GoName, ": x.", field.GoName, ",")
 	}
 	g.P("}")
 	g.P("}")
 	g.P()
-	g.P("func NewMeta", message.GoIdent, "FromProto(dataset *", message.GoIdent, ") *Meta", message.GoIdent, "{")
+	g.P("func NewMeta", message.GoIdent, "FromProto(x *", message.GoIdent, ") *Meta", message.GoIdent, "{")
 	g.P("return &Meta", message.GoIdent, "{")
 	g.P("Key: \"\",")
 	for _, field := range message.Fields {
 		t, _ := fieldGoType(g, field)
 		switch t {
 		case "time.Time":
-			g.P(field.GoName, ": ", protoPackage.Ident("FromProtoTimestamp"), "(dataset.", field.GoName, "),")
-		default:
-			g.P(field.GoName, ": dataset.", field.GoName, ",")
+			g.P(field.GoName, ": ", protoPackage.Ident("FromProtoTimestamp"), "(x.", field.GoName, "),")
+			continue
 		}
+		switch field.GoName {
+		case "Etag":
+			g.P(field.GoName, ": ", protoPackage.Ident("FromProtoETag"), "(x.", field.GoName, "),")
+			continue
+		}
+		g.P(field.GoName, ": x.", field.GoName, ",")
 	}
 	g.P("}")
 	g.P("}")
@@ -235,6 +245,10 @@ func toSnakeCase(str string) string {
 }
 
 func toArangoIdent(name string) string {
+	// Special case for Etag. It translates to `_rev`.
+	if name == "Etag" {
+		return "_rev,omitempty"
+	}
 	snake := toSnakeCase(name)
 	return strings.ToLower(snake)
 }

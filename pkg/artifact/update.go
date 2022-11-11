@@ -7,7 +7,7 @@ import (
 	"github.com/geomodular/meta-store/pkg/resource"
 )
 
-func Update[T any](ctx context.Context, db driver.Database, collectionName, name string, a *T) (*T, error) {
+func Update[T any](ctx context.Context, db driver.Database, collectionName, name string, etag string, a *T) (*T, error) {
 
 	// TODO: use field mask
 
@@ -23,8 +23,12 @@ func Update[T any](ctx context.Context, db driver.Database, collectionName, name
 
 	var newArtifact T
 	ctx = driver.WithReturnNew(ctx, &newArtifact)
+	ctx = driver.WithRevision(ctx, etag)
 	meta, err := col.UpdateDocument(ctx, key.String(), a)
 	if err != nil {
+		if driver.IsPreconditionFailed(err) {
+			return nil, log.ReportAborted(err, "failed updating artifact (precondition failed)")
+		}
 		return nil, log.Report(err, "failed updating artifact")
 	}
 

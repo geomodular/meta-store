@@ -8,25 +8,28 @@ import "google/protobuf/timestamp.proto";
 import "ai/h2o/meta_store/custom_options.proto";
 
 
-// Dataset.
 message Dataset {
 
-  option (collection_options).name = "datasets";
-  option (collection_options).type = DOCUMENT;
+  option (collection_options) = {
+    name: "datasets"
+    type: DOCUMENT
+  };
 
   // Output only. Name of the Dataset resource in format `services/metaStore/datasets/<UUID>`.
   string name = 1;
+  // Output only. The Resource checksum / revision.
+  string etag = 2;
   // Output only. The name of the parent Project in format `services/metaStore`. All versions of this resource must belong
   // to the same parent.
-  string parent = 2;
+  string parent = 3;
   // Required. Immutable. The file name of the dataset.
-  string filename = 3;
+  string filename = 4;
   // Required. Immutable. Human readable name of the resource.
-  string display_name = 4;
+  string display_name = 5;
   // Optional. Immutable. Human readable description.
-  string description = 5;
+  string description = 6;
   // Output only. Timestamp when the resource has been created.
-  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp create_time = 7;
   // Output only. Timestamp when this resource has been updated for the last time.
-  google.protobuf.Timestamp update_time = 7;
+  google.protobuf.Timestamp update_time = 8;
 }
